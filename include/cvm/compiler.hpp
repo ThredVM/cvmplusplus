@@ -1,0 +1,30 @@
+#pragma once
+#include "ast.hpp"
+#include "chunk.hpp"
+
+class Compiler {
+public:
+    Compiler();
+    Chunk compile(const Program& program);
+
+private:
+    void compileStmt(const Stmt& stmt);
+    void compileLetStmt(const LetStmt& stmt);
+    void compilePrintStmt(const PrintStmt& stmt);
+    void compileInputStmt(const InputStmt& stmt);
+    void compileExprStmt(const ExprStmt& stmt);
+    void compileBlockStmt(const BlockStmt& stmt);
+    void compileIfStmt(const IfStmt& stmt);
+    void compileWhileStmt(const WhileStmt& stmt);
+
+    void compileExpr(const Expr& expr);
+    void compileBinaryExpr(const BinaryExpr& expr);
+    void compileUnaryExpr(const UnaryExpr& expr);
+    void compileLiteralExpr(const NumberLitExpr& expr);
+    void compileBoolLiteralExpr(const BoolLitExpr& expr);
+    void compileIdentExpr(const IdentExpr& expr);
+    void compileAssignExpr(const AssignExpr& expr);
+    void compileGroupingExpr(const GroupingExpr& expr);
+
+    Chunk chunk_;
+};
