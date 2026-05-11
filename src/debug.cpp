@@ -7,6 +7,7 @@ static const char* tokenTypeToString(TokenType type) {
         case TokenType::NUMBER: return "NUMBER";
         case TokenType::TRUE: return "TRUE";
         case TokenType::FALSE: return "FALSE";
+        case TokenType::STRING: return "STRING";
         case TokenType::IDENTIFIER: return "IDENTIFIER";
         case TokenType::LET: return "LET";
         case TokenType::PRINT: return "PRINT";
@@ -54,6 +55,8 @@ static void dumpExpr(const Expr& expr, int indent) {
     printIndent(indent);
     if (auto e = dynamic_cast<const NumberLitExpr*>(&expr)) {
         std::cout << "NumberLiteral: " << e->value << std::endl;
+    } else if (auto e = dynamic_cast<const StringLitExpr*>(&expr)) {
+        std::cout << "StringLiteral: \"" << e->value << "\"" << std::endl;
     } else if (auto e = dynamic_cast<const BoolLitExpr*>(&expr)) {
         std::cout << "BoolLiteral: " << (e->value ? "true" : "false") << std::endl;
     } else if (auto e = dynamic_cast<const IdentExpr*>(&expr)) {

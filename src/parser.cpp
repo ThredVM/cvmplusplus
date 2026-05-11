@@ -170,6 +170,10 @@ ExprPtr Parser::primary() {
         return std::make_unique<NumberLitExpr>(std::stoll(previous().lexeme), previous().line);
     }
 
+    if (match({TokenType::STRING})) {
+        return std::make_unique<StringLitExpr>(previous().lexeme, previous().line);
+    }
+
     if (match({TokenType::IDENTIFIER})) {
         return std::make_unique<IdentExpr>(previous().lexeme, previous().line);
     }

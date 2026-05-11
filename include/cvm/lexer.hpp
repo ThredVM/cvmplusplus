@@ -21,6 +21,7 @@ private:
     
     void identifier();
     void number();
+    void string();
 
     std::string source_;
     std::vector<Token> tokens_;

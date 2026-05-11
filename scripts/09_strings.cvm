@@ -1,0 +1,3 @@
+print "Hello " + "World"
+let s = "The answer is " + 42
+print s

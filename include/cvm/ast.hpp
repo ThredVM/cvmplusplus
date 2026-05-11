@@ -22,6 +22,11 @@ struct NumberLitExpr : Expr {
     explicit NumberLitExpr(int64_t v, int ln) : value(v) { line = ln; }
 };
 
+struct StringLitExpr : Expr {
+    std::string value;
+    explicit StringLitExpr(std::string v, int ln) : value(std::move(v)) { line = ln; }
+};
+
 struct BoolLitExpr : Expr {
     bool value;
     explicit BoolLitExpr(bool v, int ln) : value(v) { line = ln; }

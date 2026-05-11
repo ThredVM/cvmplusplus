@@ -21,6 +21,7 @@ private:
     void compileBinaryExpr(const BinaryExpr& expr);
     void compileUnaryExpr(const UnaryExpr& expr);
     void compileLiteralExpr(const NumberLitExpr& expr);
+    void compileStringLiteralExpr(const StringLitExpr& expr);
     void compileBoolLiteralExpr(const BoolLitExpr& expr);
     void compileIdentExpr(const IdentExpr& expr);
     void compileAssignExpr(const AssignExpr& expr);

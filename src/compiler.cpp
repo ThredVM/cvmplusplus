@@ -123,6 +123,7 @@ void Compiler::compileWhileStmt(const WhileStmt& stmt) {
 
 void Compiler::compileExpr(const Expr& expr) {
     if (auto e = dynamic_cast<const NumberLitExpr*>(&expr)) compileLiteralExpr(*e);
+    else if (auto e = dynamic_cast<const StringLitExpr*>(&expr)) compileStringLiteralExpr(*e);
     else if (auto e = dynamic_cast<const BoolLitExpr*>(&expr)) compileBoolLiteralExpr(*e);
     else if (auto e = dynamic_cast<const IdentExpr*>(&expr)) compileIdentExpr(*e);
     else if (auto e = dynamic_cast<const AssignExpr*>(&expr)) compileAssignExpr(*e);
@@ -160,6 +161,12 @@ void Compiler::compileUnaryExpr(const UnaryExpr& expr) {
 }
 
 void Compiler::compileLiteralExpr(const NumberLitExpr& expr) {
+    uint16_t idx = addConstant(Value{expr.value});
+    chunk_.emitOp(OpCode::PUSH_CONST, expr.line);
+    chunk_.emitU16(idx, expr.line);
+}
+
+void Compiler::compileStringLiteralExpr(const StringLitExpr& expr) {
     uint16_t idx = addConstant(Value{expr.value});
     chunk_.emitOp(OpCode::PUSH_CONST, expr.line);
     chunk_.emitU16(idx, expr.line);

@@ -3,7 +3,7 @@
 
 enum class TokenType {
     // Literals
-    NUMBER, TRUE, FALSE,
+    NUMBER, TRUE, FALSE, STRING,
 
     // Identifiers & keywords
     IDENTIFIER,

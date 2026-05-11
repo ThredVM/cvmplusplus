@@ -28,8 +28,17 @@ void VM::execute(const Chunk& chunk) {
 
             case OpCode::ADD: {
                 Value b = pop(), a = pop();
-                if (!isInt(a) || !isInt(b)) throw RuntimeError("'+' requires integers", line);
-                push(Value{asInt(a) + asInt(b)});
+                if (isInt(a) && isInt(b)) {
+                    push(Value{asInt(a) + asInt(b)});
+                } else if (isString(a) && isString(b)) {
+                    push(Value{asString(a) + asString(b)});
+                } else if (isString(a) && isInt(b)) {
+                    push(Value{asString(a) + std::to_string(asInt(b))});
+                } else if (isInt(a) && isString(b)) {
+                    push(Value{std::to_string(asInt(a)) + asString(b)});
+                } else {
+                    throw RuntimeError("'+' requires integers or strings", line);
+                }
                 break;
             }
             case OpCode::SUB: {

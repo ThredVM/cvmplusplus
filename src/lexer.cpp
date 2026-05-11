@@ -41,6 +41,7 @@ std::vector<Token> Lexer::tokenize() {
             case '>':
                 addToken(match('=') ? TokenType::GT_EQ : TokenType::GT);
                 break;
+            case '"': string(); break;
             case ' ':
             case '\r':
             case '\t':
@@ -100,6 +101,24 @@ void Lexer::addToken(TokenType type, std::string lexeme) {
 void Lexer::number() {
     while (isdigit(peek())) advance();
     addToken(TokenType::NUMBER);
+}
+
+void Lexer::string() {
+    while (peek() != '"' && !isAtEnd()) {
+        if (peek() == '\n') line_++;
+        advance();
+    }
+
+    if (isAtEnd()) {
+        throw LexError("Unterminated string.", line_);
+    }
+
+    // The closing ".
+    advance();
+
+    // Trim the surrounding quotes.
+    std::string value = source_.substr(start_ + 1, current_ - start_ - 2);
+    addToken(TokenType::STRING, value);
 }
 
 void Lexer::identifier() {
