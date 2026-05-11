@@ -33,6 +33,18 @@ void run(const std::string& source, bool dumpTokensFlag = false, bool dumpASTFla
 
         VM vm;
         vm.execute(chunk);
+    } catch (const LexError& e) {
+        std::cerr << "[Lex Error]     line " << e.line << ": " << e.what() << std::endl;
+        exit(1);
+    } catch (const ParseError& e) {
+        std::cerr << "[Parse Error]   line " << e.line << ": " << e.what() << std::endl;
+        exit(1);
+    } catch (const CompileError& e) {
+        std::cerr << "[Compile Error] " << e.what() << std::endl;
+        exit(1);
+    } catch (const RuntimeError& e) {
+        std::cerr << "[Runtime Error] line " << e.line << ": " << e.what() << std::endl;
+        exit(1);
     } catch (const CVMError& e) {
         if (e.line != -1) {
             std::cerr << "[Error] line " << e.line << ": " << e.what() << std::endl;
