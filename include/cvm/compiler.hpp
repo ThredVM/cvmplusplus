@@ -21,6 +21,8 @@ private:
     void compileBlockStmt(const BlockStmt& stmt);
     void compileIfStmt(const IfStmt& stmt);
     void compileWhileStmt(const WhileStmt& stmt);
+    void compileFnStmt(const FnStmt& stmt);
+    void compileReturnStmt(const ReturnStmt& stmt);
 
     void compileExpr(const Expr& expr);
     void compileBinaryExpr(const BinaryExpr& expr);
@@ -31,6 +33,7 @@ private:
     void compileIdentExpr(const IdentExpr& expr);
     void compileAssignExpr(const AssignExpr& expr);
     void compileGroupingExpr(const GroupingExpr& expr);
+    void compileCallExpr(const CallExpr& expr);
 
     uint16_t addConstant(Value v);
     uint16_t addName(const std::string& name);

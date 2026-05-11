@@ -15,6 +15,8 @@ Program Parser::parse() {
 }
 
 StmtPtr Parser::statement() {
+    if (match({TokenType::FN})) return fnStatement();
+    if (match({TokenType::RETURN})) return returnStatement();
     if (match({TokenType::LET})) return letStatement();
     if (match({TokenType::PRINT})) return printStatement();
     if (match({TokenType::INPUT})) return inputStatement();
@@ -23,6 +25,31 @@ StmtPtr Parser::statement() {
     if (match({TokenType::LBRACE})) return blockStatement();
 
     return expressionStatement();
+}
+
+StmtPtr Parser::fnStatement() {
+    Token name = consume(TokenType::IDENTIFIER, "Expect function name.");
+    consume(TokenType::LPAREN, "Expect '(' after function name.");
+    std::vector<std::string> parameters;
+    if (!check(TokenType::RPAREN)) {
+        do {
+            parameters.push_back(consume(TokenType::IDENTIFIER, "Expect parameter name.").lexeme);
+        } while (match({TokenType::COMMA}));
+    }
+    consume(TokenType::RPAREN, "Expect ')' after parameters.");
+    consume(TokenType::LBRACE, "Expect '{' before function body.");
+    StmtPtr body = blockStatement();
+    return std::make_unique<FnStmt>(name.lexeme, std::move(parameters), std::move(body), name.line);
+}
+
+StmtPtr Parser::returnStatement() {
+    int line = previous().line;
+    ExprPtr value = nullptr;
+    if (!check(TokenType::NEWLINE)) {
+        value = expression();
+    }
+    consume(TokenType::NEWLINE, "Expect newline after return value.");
+    return std::make_unique<ReturnStmt>(std::move(value), line);
 }
 
 StmtPtr Parser::letStatement() {
@@ -159,7 +186,34 @@ ExprPtr Parser::unary() {
         return std::make_unique<UnaryExpr>(op, std::move(right));
     }
 
-    return primary();
+    return call();
+}
+
+ExprPtr Parser::call() {
+    ExprPtr expr = primary();
+
+    while (true) {
+        if (match({TokenType::LPAREN})) {
+            expr = finishCall(std::move(expr));
+        } else {
+            break;
+        }
+    }
+
+    return expr;
+}
+
+ExprPtr Parser::finishCall(ExprPtr callee) {
+    std::vector<ExprPtr> arguments;
+    if (!check(TokenType::RPAREN)) {
+        do {
+            arguments.push_back(expression());
+        } while (match({TokenType::COMMA}));
+    }
+
+    Token paren = consume(TokenType::RPAREN, "Expect ')' after arguments.");
+
+    return std::make_unique<CallExpr>(std::move(callee), std::move(arguments), paren.line);
 }
 
 ExprPtr Parser::primary() {

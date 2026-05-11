@@ -15,6 +15,8 @@ static const char* tokenTypeToString(TokenType type) {
         case TokenType::IF: return "IF";
         case TokenType::ELSE: return "ELSE";
         case TokenType::WHILE: return "WHILE";
+        case TokenType::FN: return "FN";
+        case TokenType::RETURN: return "RETURN";
         case TokenType::PLUS: return "PLUS";
         case TokenType::MINUS: return "MINUS";
         case TokenType::STAR: return "STAR";
@@ -31,6 +33,7 @@ static const char* tokenTypeToString(TokenType type) {
         case TokenType::RPAREN: return "RPAREN";
         case TokenType::LBRACE: return "LBRACE";
         case TokenType::RBRACE: return "RBRACE";
+        case TokenType::COMMA: return "COMMA";
         case TokenType::SEMICOLON: return "SEMICOLON";
         case TokenType::NEWLINE: return "NEWLINE";
         case TokenType::EOF_TOKEN: return "EOF";
@@ -74,6 +77,12 @@ static void dumpExpr(const Expr& expr, int indent) {
     } else if (auto e = dynamic_cast<const AssignExpr*>(&expr)) {
         std::cout << "Assignment: " << e->name << std::endl;
         dumpExpr(*e->value, indent + 1);
+    } else if (auto e = dynamic_cast<const CallExpr*>(&expr)) {
+        std::cout << "CallExpr" << std::endl;
+        printIndent(indent + 1); std::cout << "Callee:" << std::endl;
+        dumpExpr(*e->callee, indent + 2);
+        printIndent(indent + 1); std::cout << "Arguments:" << std::endl;
+        for (const auto& arg : e->args) dumpExpr(*arg, indent + 2);
     }
 }
 
@@ -109,6 +118,16 @@ static void dumpStmt(const Stmt& stmt, int indent) {
         dumpExpr(*s->condition, indent + 2);
         printIndent(indent + 1); std::cout << "Body:" << std::endl;
         dumpStmt(*s->body, indent + 2);
+    } else if (auto s = dynamic_cast<const FnStmt*>(&stmt)) {
+        std::cout << "FnStmt: " << s->name << " (";
+        for (size_t i = 0; i < s->params.size(); i++) {
+            std::cout << s->params[i] << (i == s->params.size() - 1 ? "" : ", ");
+        }
+        std::cout << ")" << std::endl;
+        dumpStmt(*s->body, indent + 1);
+    } else if (auto s = dynamic_cast<const ReturnStmt*>(&stmt)) {
+        std::cout << "ReturnStmt" << std::endl;
+        if (s->value) dumpExpr(*s->value, indent + 1);
     }
 }
 
@@ -175,6 +194,14 @@ int disassembleInstruction(const Chunk& chunk, int offset) {
         case OpCode::DEFINE_GLOBAL: return nameInstruction("DEFINE_GLOBAL", chunk, offset);
         case OpCode::GET_GLOBAL:    return nameInstruction("GET_GLOBAL", chunk, offset);
         case OpCode::SET_GLOBAL:    return nameInstruction("SET_GLOBAL", chunk, offset);
+        case OpCode::GET_LOCAL:     return u16Instruction("GET_LOCAL", chunk, offset);
+        case OpCode::SET_LOCAL:     return u16Instruction("SET_LOCAL", chunk, offset);
+        case OpCode::CALL: {
+            uint8_t argc = chunk.code[offset + 1];
+            std::cout << std::left << std::setw(16) << "CALL" << " " << std::right << std::setw(4) << (int)argc << std::endl;
+            return offset + 2;
+        }
+        case OpCode::RET:           return simpleInstruction("RET", offset);
         case OpCode::POP:           return simpleInstruction("POP", offset);
         case OpCode::JUMP:          return u16Instruction("JUMP", chunk, offset);
         case OpCode::JUMP_IF_FALSE: return u16Instruction("JUMP_IF_FALSE", chunk, offset);

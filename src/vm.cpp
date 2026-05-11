@@ -7,13 +7,19 @@ VM::VM(bool debugMode) : debug_(debugMode) {
 }
 
 void VM::execute(const Chunk& chunk) {
-    const uint8_t* ip = chunk.code.data();
-    const uint8_t* end = ip + chunk.code.size();
+    auto mainFunc = std::make_shared<Function>();
+    mainFunc->name = "main";
+    mainFunc->arity = 0;
+    mainFunc->startAddress = 0;
+    
+    frames_.push_back({mainFunc, chunk.code.data(), 0});
 
-    while (ip < end) {
+    while (!frames_.empty()) {
+        CallFrame& frame = frames_.back();
+        const uint8_t*& ip = frame.ip;
+
         if (debug_) dumpStack();
 
-        // Track current line for error reporting
         int line = chunk.lines[ip - chunk.code.data()];
         OpCode op = static_cast<OpCode>(*ip++);
 
@@ -128,14 +134,45 @@ void VM::execute(const Chunk& chunk) {
 
             case OpCode::GET_LOCAL: {
                 uint16_t slot = readU16(ip);
-                if (slot >= stack_.size()) throw RuntimeError("Invalid local slot access", line);
-                push(stack_[slot]);
+                if (frame.slots + slot >= stack_.size()) throw RuntimeError("Invalid local slot access", line);
+                push(stack_[frame.slots + slot]);
                 break;
             }
             case OpCode::SET_LOCAL: {
                 uint16_t slot = readU16(ip);
-                if (slot >= stack_.size()) throw RuntimeError("Invalid local slot access", line);
-                stack_[slot] = peek();
+                if (frame.slots + slot >= stack_.size()) throw RuntimeError("Invalid local slot access", line);
+                stack_[frame.slots + slot] = peek();
+                break;
+            }
+
+            case OpCode::CALL: {
+                uint8_t argc = *ip++;
+                Value calleeValue = peek(argc);
+                if (!isFunction(calleeValue)) {
+                    throw RuntimeError("Can only call functions", line);
+                }
+                auto function = asFunction(calleeValue);
+                if (argc != function->arity) {
+                    throw RuntimeError("Expected " + std::to_string(function->arity) + " arguments but got " + std::to_string(argc), line);
+                }
+                if (frames_.size() >= MAX_FRAMES) {
+                    throw RuntimeError("Stack overflow (too many call frames)", line);
+                }
+                frames_.push_back({function, chunk.code.data() + function->startAddress, stack_.size() - argc});
+                break;
+            }
+            case OpCode::RET: {
+                Value result = pop();
+                size_t slots = frames_.back().slots;
+                frames_.pop_back();
+                
+                if (frames_.empty()) return;
+
+                while (stack_.size() > slots - 1) {
+                    stack_.pop_back();
+                }
+                
+                push(result);
                 break;
             }
 

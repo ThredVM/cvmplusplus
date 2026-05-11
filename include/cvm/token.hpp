@@ -9,6 +9,7 @@ enum class TokenType {
     IDENTIFIER,
     LET, PRINT, INPUT,
     IF, ELSE, WHILE,
+    FN, RETURN,
 
     // Operators
     PLUS, MINUS, STAR, SLASH,
@@ -20,7 +21,7 @@ enum class TokenType {
     // Delimiters
     LPAREN, RPAREN,
     LBRACE, RBRACE,
-    SEMICOLON, NEWLINE,
+    COMMA, SEMICOLON, NEWLINE,
 
     // Control
     EOF_TOKEN

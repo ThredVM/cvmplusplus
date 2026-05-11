@@ -11,6 +11,8 @@ static const std::unordered_map<std::string, TokenType> keywords = {
     {"while", TokenType::WHILE},
     {"true",  TokenType::TRUE},
     {"false", TokenType::FALSE},
+    {"fn",     TokenType::FN},
+    {"return", TokenType::RETURN},
 };
 
 Lexer::Lexer(std::string source) : source_(std::move(source)) {}
@@ -24,6 +26,7 @@ std::vector<Token> Lexer::tokenize() {
             case ')': addToken(TokenType::RPAREN); break;
             case '{': addToken(TokenType::LBRACE); break;
             case '}': addToken(TokenType::RBRACE); break;
+            case ',': addToken(TokenType::COMMA); break;
             case ';': addToken(TokenType::SEMICOLON); break;
             case '+': addToken(TokenType::PLUS); break;
             case '-': addToken(TokenType::MINUS); break;

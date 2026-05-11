@@ -73,6 +73,22 @@ struct GroupingExpr : Expr {
     ExprPtr fold() override;
 };
 
+struct CallExpr : Expr {
+    ExprPtr callee;
+    std::vector<ExprPtr> args;
+    CallExpr(ExprPtr c, std::vector<ExprPtr> a, int ln)
+        : callee(std::move(c)), args(std::move(a)) { line = ln; }
+    ExprPtr fold() override {
+        auto f_callee = callee->fold();
+        if (f_callee) callee = std::move(f_callee);
+        for (auto& arg : args) {
+            auto folded = arg->fold();
+            if (folded) arg = std::move(folded);
+        }
+        return nullptr;
+    }
+};
+
 // ── Statement base ─────────────────────────────────────────────────────────
 struct Stmt {
     int line = 0;
@@ -148,6 +164,26 @@ struct WhileStmt : Stmt {
         auto folded = condition->fold();
         if (folded) condition = std::move(folded);
         body->fold();
+    }
+};
+
+struct FnStmt : Stmt {
+    std::string name;
+    std::vector<std::string> params;
+    StmtPtr body;
+    FnStmt(std::string n, std::vector<std::string> p, StmtPtr b, int ln)
+        : name(std::move(n)), params(std::move(p)), body(std::move(b)) { line = ln; }
+    void fold() override { body->fold(); }
+};
+
+struct ReturnStmt : Stmt {
+    ExprPtr value; // may be nullptr
+    ReturnStmt(ExprPtr v, int ln) : value(std::move(v)) { line = ln; }
+    void fold() override {
+        if (value) {
+            auto folded = value->fold();
+            if (folded) value = std::move(folded);
+        }
     }
 };
 

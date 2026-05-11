@@ -21,6 +21,9 @@ enum class OpCode : uint8_t {
     GET_LOCAL,      // [slot:u16]
     SET_LOCAL,      // [slot:u16]
 
+    CALL,           // [argc:u8]
+    RET,
+
     POP,
     JUMP,           // [offset:u16]
     JUMP_IF_FALSE,  // [offset:u16]

@@ -2,8 +2,16 @@
 #include "chunk.hpp"
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 constexpr size_t MAX_STACK = 256;
+constexpr size_t MAX_FRAMES = 64;
+
+struct CallFrame {
+    std::shared_ptr<Function> function;
+    const uint8_t* ip;
+    size_t slots;
+};
 
 class VM {
 public:
@@ -12,6 +20,7 @@ public:
 
 private:
     std::vector<Value>                    stack_;
+    std::vector<CallFrame>                frames_;
     std::unordered_map<std::string,Value> globals_;
     bool                                  debug_;
 

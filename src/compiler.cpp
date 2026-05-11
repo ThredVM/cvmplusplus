@@ -20,6 +20,8 @@ void Compiler::compileStmt(const Stmt& stmt) {
     else if (auto s = dynamic_cast<const BlockStmt*>(&stmt)) compileBlockStmt(*s);
     else if (auto s = dynamic_cast<const IfStmt*>(&stmt)) compileIfStmt(*s);
     else if (auto s = dynamic_cast<const WhileStmt*>(&stmt)) compileWhileStmt(*s);
+    else if (auto s = dynamic_cast<const FnStmt*>(&stmt)) compileFnStmt(*s);
+    else if (auto s = dynamic_cast<const ReturnStmt*>(&stmt)) compileReturnStmt(*s);
 }
 
 uint16_t Compiler::addConstant(Value v) {
@@ -134,6 +136,65 @@ void Compiler::compileWhileStmt(const WhileStmt& stmt) {
     chunk_.code[exitPatch + 1] = fwdOffset & 0xFF;
 }
 
+void Compiler::compileFnStmt(const FnStmt& stmt) {
+    uint16_t nameIdx = addName(stmt.name);
+
+    chunk_.emitOp(OpCode::JUMP, stmt.line);
+    size_t jumpPatch = chunk_.code.size();
+    chunk_.emitU16(0xFFFF, stmt.line);
+
+    size_t startAddress = chunk_.code.size();
+    
+    auto oldLocals = std::move(locals_);
+    int oldScopeDepth = scopeDepth_;
+    locals_ = {};
+    scopeDepth_ = 0;
+
+    beginScope();
+    for (const auto& param : stmt.params) {
+        addLocal(param, stmt.line);
+    }
+    
+    compileStmt(*stmt.body);
+    
+    // Safety return
+    uint16_t zeroIdx = addConstant(Value{(int64_t)0});
+    chunk_.emitOp(OpCode::PUSH_CONST, stmt.line);
+    chunk_.emitU16(zeroIdx, stmt.line);
+    chunk_.emitOp(OpCode::RET, stmt.line);
+    
+    scopeDepth_--;
+    locals_ = std::move(oldLocals);
+    scopeDepth_ = oldScopeDepth;
+
+    size_t endAddress = chunk_.code.size();
+    uint16_t offset = (uint16_t)(endAddress - (jumpPatch + 2));
+    chunk_.code[jumpPatch] = (offset >> 8) & 0xFF;
+    chunk_.code[jumpPatch + 1] = offset & 0xFF;
+
+    auto function = std::make_shared<Function>();
+    function->name = stmt.name;
+    function->arity = (int)stmt.params.size();
+    function->startAddress = startAddress;
+
+    uint16_t funcIdx = addConstant(Value{function});
+    chunk_.emitOp(OpCode::PUSH_CONST, stmt.line);
+    chunk_.emitU16(funcIdx, stmt.line);
+    chunk_.emitOp(OpCode::DEFINE_GLOBAL, stmt.line);
+    chunk_.emitU16(nameIdx, stmt.line);
+}
+
+void Compiler::compileReturnStmt(const ReturnStmt& stmt) {
+    if (stmt.value) {
+        compileExpr(*stmt.value);
+    } else {
+        uint16_t zeroIdx = addConstant(Value{(int64_t)0});
+        chunk_.emitOp(OpCode::PUSH_CONST, stmt.line);
+        chunk_.emitU16(zeroIdx, stmt.line);
+    }
+    chunk_.emitOp(OpCode::RET, stmt.line);
+}
+
 void Compiler::compileExpr(const Expr& expr) {
     if (auto e = dynamic_cast<const NumberLitExpr*>(&expr)) compileLiteralExpr(*e);
     else if (auto e = dynamic_cast<const StringLitExpr*>(&expr)) compileStringLiteralExpr(*e);
@@ -143,6 +204,7 @@ void Compiler::compileExpr(const Expr& expr) {
     else if (auto e = dynamic_cast<const BinaryExpr*>(&expr)) compileBinaryExpr(*e);
     else if (auto e = dynamic_cast<const UnaryExpr*>(&expr)) compileUnaryExpr(*e);
     else if (auto e = dynamic_cast<const GroupingExpr*>(&expr)) compileGroupingExpr(*e);
+    else if (auto e = dynamic_cast<const CallExpr*>(&expr)) compileCallExpr(*e);
 }
 
 void Compiler::compileBinaryExpr(const BinaryExpr& expr) {
@@ -218,6 +280,15 @@ void Compiler::compileGroupingExpr(const GroupingExpr& expr) {
     compileExpr(*expr.inner);
 }
 
+void Compiler::compileCallExpr(const CallExpr& expr) {
+    compileExpr(*expr.callee);
+    for (const auto& arg : expr.args) {
+        compileExpr(*arg);
+    }
+    chunk_.emitOp(OpCode::CALL, expr.line);
+    chunk_.emit((uint8_t)expr.args.size(), expr.line);
+}
+
 void Compiler::beginScope() {
     scopeDepth_++;
 }
@@ -231,6 +302,7 @@ void Compiler::endScope(int line) {
 }
 
 void Compiler::addLocal(const std::string& name, int line) {
+    (void)line; // avoid unused parameter warning
     for (auto it = locals_.rbegin(); it != locals_.rend(); ++it) {
         if (it->depth != -1 && it->depth < scopeDepth_) break;
         if (name == it->name) {
