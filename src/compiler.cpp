@@ -21,9 +21,23 @@ void Compiler::compileStmt(const Stmt& stmt) {
     else if (auto s = dynamic_cast<const WhileStmt*>(&stmt)) compileWhileStmt(*s);
 }
 
+uint16_t Compiler::addConstant(Value v) {
+    if (chunk_.constants.size() >= 0xFFFF) {
+        throw CompileError("Too many constants in one chunk.");
+    }
+    return chunk_.addConstant(v);
+}
+
+uint16_t Compiler::addName(const std::string& name) {
+    if (chunk_.names.size() >= 0xFFFF) {
+        throw CompileError("Too many variable names in one chunk.");
+    }
+    return chunk_.addName(name);
+}
+
 void Compiler::compileLetStmt(const LetStmt& stmt) {
     compileExpr(*stmt.initializer);
-    uint16_t nameIdx = chunk_.addName(stmt.name);
+    uint16_t nameIdx = addName(stmt.name);
     chunk_.emitOp(OpCode::DEFINE_GLOBAL, stmt.line);
     chunk_.emitU16(nameIdx, stmt.line);
 }
@@ -35,7 +49,7 @@ void Compiler::compilePrintStmt(const PrintStmt& stmt) {
 
 void Compiler::compileInputStmt(const InputStmt& stmt) {
     chunk_.emitOp(OpCode::INPUT, stmt.line);
-    uint16_t nameIdx = chunk_.addName(stmt.varName);
+    uint16_t nameIdx = addName(stmt.varName);
     chunk_.emitOp(OpCode::SET_GLOBAL, stmt.line);
     chunk_.emitU16(nameIdx, stmt.line);
     chunk_.emitOp(OpCode::POP, stmt.line);
@@ -146,7 +160,7 @@ void Compiler::compileUnaryExpr(const UnaryExpr& expr) {
 }
 
 void Compiler::compileLiteralExpr(const NumberLitExpr& expr) {
-    uint16_t idx = chunk_.addConstant(Value{expr.value});
+    uint16_t idx = addConstant(Value{expr.value});
     chunk_.emitOp(OpCode::PUSH_CONST, expr.line);
     chunk_.emitU16(idx, expr.line);
 }
@@ -156,14 +170,14 @@ void Compiler::compileBoolLiteralExpr(const BoolLitExpr& expr) {
 }
 
 void Compiler::compileIdentExpr(const IdentExpr& expr) {
-    uint16_t nameIdx = chunk_.addName(expr.name);
+    uint16_t nameIdx = addName(expr.name);
     chunk_.emitOp(OpCode::GET_GLOBAL, expr.line);
     chunk_.emitU16(nameIdx, expr.line);
 }
 
 void Compiler::compileAssignExpr(const AssignExpr& expr) {
     compileExpr(*expr.value);
-    uint16_t nameIdx = chunk_.addName(expr.name);
+    uint16_t nameIdx = addName(expr.name);
     chunk_.emitOp(OpCode::SET_GLOBAL, expr.line);
     chunk_.emitU16(nameIdx, expr.line);
 }

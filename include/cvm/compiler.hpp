@@ -26,5 +26,8 @@ private:
     void compileAssignExpr(const AssignExpr& expr);
     void compileGroupingExpr(const GroupingExpr& expr);
 
+    uint16_t addConstant(Value v);
+    uint16_t addName(const std::string& name);
+
     Chunk chunk_;
 };
