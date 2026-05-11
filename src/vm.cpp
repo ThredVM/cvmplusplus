@@ -1,0 +1,185 @@
+#include "cvm/vm.hpp"
+#include "cvm/error.hpp"
+#include <iostream>
+
+VM::VM(bool debugMode) : debug_(debugMode) {
+    stack_.reserve(MAX_STACK);
+}
+
+void VM::execute(const Chunk& chunk) {
+    const uint8_t* ip = chunk.code.data();
+    const uint8_t* end = ip + chunk.code.size();
+
+    while (ip < end) {
+        if (debug_) dumpStack();
+
+        // Track current line for error reporting
+        int line = chunk.lines[ip - chunk.code.data()];
+        OpCode op = static_cast<OpCode>(*ip++);
+
+        switch (op) {
+            case OpCode::PUSH_CONST: {
+                uint16_t idx = readU16(ip);
+                push(chunk.constants[idx]);
+                break;
+            }
+            case OpCode::PUSH_TRUE:  push(Value{true});  break;
+            case OpCode::PUSH_FALSE: push(Value{false}); break;
+
+            case OpCode::ADD: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'+' requires integers", line);
+                push(Value{asInt(a) + asInt(b)});
+                break;
+            }
+            case OpCode::SUB: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'-' requires integers", line);
+                push(Value{asInt(a) - asInt(b)});
+                break;
+            }
+            case OpCode::MUL: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'*' requires integers", line);
+                push(Value{asInt(a) * asInt(b)});
+                break;
+            }
+            case OpCode::DIV: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'/' requires integers", line);
+                if (asInt(b) == 0) throw RuntimeError("Division by zero", line);
+                push(Value{asInt(a) / asInt(b)});
+                break;
+            }
+            case OpCode::NEG: {
+                Value a = pop();
+                if (!isInt(a)) throw RuntimeError("'-' unary requires integer", line);
+                push(Value{-asInt(a)});
+                break;
+            }
+
+            case OpCode::EQ: {
+                Value b = pop(), a = pop();
+                push(Value{a == b});
+                break;
+            }
+            case OpCode::NEQ: {
+                Value b = pop(), a = pop();
+                push(Value{a != b});
+                break;
+            }
+            case OpCode::LT: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'<' requires integers", line);
+                push(Value{asInt(a) < asInt(b)});
+                break;
+            }
+            case OpCode::LT_EQ: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'<=' requires integers", line);
+                push(Value{asInt(a) <= asInt(b)});
+                break;
+            }
+            case OpCode::GT: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'>' requires integers", line);
+                push(Value{asInt(a) > asInt(b)});
+                break;
+            }
+            case OpCode::GT_EQ: {
+                Value b = pop(), a = pop();
+                if (!isInt(a) || !isInt(b)) throw RuntimeError("'>=' requires integers", line);
+                push(Value{asInt(a) >= asInt(b)});
+                break;
+            }
+            case OpCode::NOT: {
+                push(Value{!isTruthy(pop())});
+                break;
+            }
+
+            case OpCode::DEFINE_GLOBAL: {
+                uint16_t idx = readU16(ip);
+                globals_[chunk.names[idx]] = pop();
+                break;
+            }
+            case OpCode::GET_GLOBAL: {
+                uint16_t idx = readU16(ip);
+                auto it = globals_.find(chunk.names[idx]);
+                if (it == globals_.end()) throw RuntimeError("Undefined variable: " + chunk.names[idx], line);
+                push(it->second);
+                break;
+            }
+            case OpCode::SET_GLOBAL: {
+                uint16_t idx = readU16(ip);
+                const std::string& name = chunk.names[idx];
+                if (globals_.find(name) == globals_.end()) throw RuntimeError("Undefined variable: " + name, line);
+                globals_[name] = peek();
+                break;
+            }
+
+            case OpCode::POP: pop(); break;
+
+            case OpCode::JUMP: {
+                uint16_t offset = readU16(ip);
+                ip += offset;
+                break;
+            }
+            case OpCode::JUMP_IF_FALSE: {
+                uint16_t offset = readU16(ip);
+                if (!isTruthy(pop())) ip += offset;
+                break;
+            }
+            case OpCode::LOOP: {
+                uint16_t offset = readU16(ip);
+                ip -= offset;
+                break;
+            }
+
+            case OpCode::PRINT: {
+                std::cout << valueToString(pop()) << "\n";
+                break;
+            }
+            case OpCode::INPUT: {
+                std::string line_in;
+                if (!std::getline(std::cin, line_in)) return;
+                try { push(Value{std::stoll(line_in)}); }
+                catch (...) { throw RuntimeError("input must be an integer", line); }
+                break;
+            }
+            case OpCode::HALT: return;
+
+            default: throw RuntimeError("Unknown opcode", line);
+        }
+    }
+}
+
+void VM::push(Value v) {
+    if (stack_.size() >= MAX_STACK) throw RuntimeError("Stack overflow");
+    stack_.push_back(std::move(v));
+}
+
+Value VM::pop() {
+    if (stack_.empty()) throw RuntimeError("Stack underflow");
+    Value v = std::move(stack_.back());
+    stack_.pop_back();
+    return v;
+}
+
+const Value& VM::peek(int distance) const {
+    if ((int)stack_.size() <= distance) throw RuntimeError("Stack peek out of bounds");
+    return stack_[stack_.size() - 1 - distance];
+}
+
+uint16_t VM::readU16(const uint8_t*& ip) const {
+    uint16_t hi = *ip++;
+    uint16_t lo = *ip++;
+    return (hi << 8) | lo;
+}
+
+void VM::dumpStack() const {
+    std::cout << "          ";
+    for (const auto& val : stack_) {
+        std::cout << "[ " << valueToString(val) << " ]";
+    }
+    std::cout << "\n";
+}
