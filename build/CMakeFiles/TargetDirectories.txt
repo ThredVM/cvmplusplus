@@ -1,3 +1,0 @@
-/home/rahul/projects/cvmplusplus/build/CMakeFiles/cvm.dir
-/home/rahul/projects/cvmplusplus/build/CMakeFiles/edit_cache.dir
-/home/rahul/projects/cvmplusplus/build/CMakeFiles/rebuild_cache.dir
