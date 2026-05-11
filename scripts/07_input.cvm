@@ -1,0 +1,3 @@
+let n = 0
+input n
+print n
