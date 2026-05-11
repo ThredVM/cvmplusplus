@@ -16,4 +16,5 @@ add_executable(cvm
     src/parser.cpp
     src/compiler.cpp
     src/vm.cpp
+    src/debug.cpp
 )
