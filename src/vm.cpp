@@ -126,6 +126,19 @@ void VM::execute(const Chunk& chunk) {
                 break;
             }
 
+            case OpCode::GET_LOCAL: {
+                uint16_t slot = readU16(ip);
+                if (slot >= stack_.size()) throw RuntimeError("Invalid local slot access", line);
+                push(stack_[slot]);
+                break;
+            }
+            case OpCode::SET_LOCAL: {
+                uint16_t slot = readU16(ip);
+                if (slot >= stack_.size()) throw RuntimeError("Invalid local slot access", line);
+                stack_[slot] = peek();
+                break;
+            }
+
             case OpCode::POP: pop(); break;
 
             case OpCode::JUMP: {

@@ -8,6 +8,11 @@ public:
     Chunk compile(const Program& program);
 
 private:
+    struct Local {
+        std::string name;
+        int depth;
+    };
+
     void compileStmt(const Stmt& stmt);
     void compileLetStmt(const LetStmt& stmt);
     void compilePrintStmt(const PrintStmt& stmt);
@@ -30,5 +35,13 @@ private:
     uint16_t addConstant(Value v);
     uint16_t addName(const std::string& name);
 
+    // Local variable support
+    void beginScope();
+    void endScope(int line);
+    void addLocal(const std::string& name, int line);
+    int resolveLocal(const std::string& name);
+
     Chunk chunk_;
+    std::vector<Local> locals_;
+    int scopeDepth_ = 0;
 };

@@ -18,6 +18,9 @@ enum class OpCode : uint8_t {
     GET_GLOBAL,     // [idx:u16]
     SET_GLOBAL,     // [idx:u16]
 
+    GET_LOCAL,      // [slot:u16]
+    SET_LOCAL,      // [slot:u16]
+
     POP,
     JUMP,           // [offset:u16]
     JUMP_IF_FALSE,  // [offset:u16]

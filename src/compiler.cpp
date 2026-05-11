@@ -38,9 +38,13 @@ uint16_t Compiler::addName(const std::string& name) {
 
 void Compiler::compileLetStmt(const LetStmt& stmt) {
     compileExpr(*stmt.initializer);
-    uint16_t nameIdx = addName(stmt.name);
-    chunk_.emitOp(OpCode::DEFINE_GLOBAL, stmt.line);
-    chunk_.emitU16(nameIdx, stmt.line);
+    if (scopeDepth_ > 0) {
+        addLocal(stmt.name, stmt.line);
+    } else {
+        uint16_t nameIdx = addName(stmt.name);
+        chunk_.emitOp(OpCode::DEFINE_GLOBAL, stmt.line);
+        chunk_.emitU16(nameIdx, stmt.line);
+    }
 }
 
 void Compiler::compilePrintStmt(const PrintStmt& stmt) {
@@ -50,9 +54,15 @@ void Compiler::compilePrintStmt(const PrintStmt& stmt) {
 
 void Compiler::compileInputStmt(const InputStmt& stmt) {
     chunk_.emitOp(OpCode::INPUT, stmt.line);
-    uint16_t nameIdx = addName(stmt.varName);
-    chunk_.emitOp(OpCode::SET_GLOBAL, stmt.line);
-    chunk_.emitU16(nameIdx, stmt.line);
+    int arg = resolveLocal(stmt.varName);
+    if (arg != -1) {
+        chunk_.emitOp(OpCode::SET_LOCAL, stmt.line);
+        chunk_.emitU16((uint16_t)arg, stmt.line);
+    } else {
+        uint16_t nameIdx = addName(stmt.varName);
+        chunk_.emitOp(OpCode::SET_GLOBAL, stmt.line);
+        chunk_.emitU16(nameIdx, stmt.line);
+    }
     chunk_.emitOp(OpCode::POP, stmt.line);
 }
 
@@ -62,9 +72,11 @@ void Compiler::compileExprStmt(const ExprStmt& stmt) {
 }
 
 void Compiler::compileBlockStmt(const BlockStmt& stmt) {
+    beginScope();
     for (const auto& s : stmt.stmts) {
         compileStmt(*s);
     }
+    endScope(stmt.line);
 }
 
 void Compiler::compileIfStmt(const IfStmt& stmt) {
@@ -178,18 +190,61 @@ void Compiler::compileBoolLiteralExpr(const BoolLitExpr& expr) {
 }
 
 void Compiler::compileIdentExpr(const IdentExpr& expr) {
-    uint16_t nameIdx = addName(expr.name);
-    chunk_.emitOp(OpCode::GET_GLOBAL, expr.line);
-    chunk_.emitU16(nameIdx, expr.line);
+    int arg = resolveLocal(expr.name);
+    if (arg != -1) {
+        chunk_.emitOp(OpCode::GET_LOCAL, expr.line);
+        chunk_.emitU16((uint16_t)arg, expr.line);
+    } else {
+        uint16_t nameIdx = addName(expr.name);
+        chunk_.emitOp(OpCode::GET_GLOBAL, expr.line);
+        chunk_.emitU16(nameIdx, expr.line);
+    }
 }
 
 void Compiler::compileAssignExpr(const AssignExpr& expr) {
     compileExpr(*expr.value);
-    uint16_t nameIdx = addName(expr.name);
-    chunk_.emitOp(OpCode::SET_GLOBAL, expr.line);
-    chunk_.emitU16(nameIdx, expr.line);
+    int arg = resolveLocal(expr.name);
+    if (arg != -1) {
+        chunk_.emitOp(OpCode::SET_LOCAL, expr.line);
+        chunk_.emitU16((uint16_t)arg, expr.line);
+    } else {
+        uint16_t nameIdx = addName(expr.name);
+        chunk_.emitOp(OpCode::SET_GLOBAL, expr.line);
+        chunk_.emitU16(nameIdx, expr.line);
+    }
 }
 
 void Compiler::compileGroupingExpr(const GroupingExpr& expr) {
     compileExpr(*expr.inner);
+}
+
+void Compiler::beginScope() {
+    scopeDepth_++;
+}
+
+void Compiler::endScope(int line) {
+    scopeDepth_--;
+    while (!locals_.empty() && locals_.back().depth > scopeDepth_) {
+        chunk_.emitOp(OpCode::POP, line);
+        locals_.pop_back();
+    }
+}
+
+void Compiler::addLocal(const std::string& name, int line) {
+    for (auto it = locals_.rbegin(); it != locals_.rend(); ++it) {
+        if (it->depth != -1 && it->depth < scopeDepth_) break;
+        if (name == it->name) {
+            throw CompileError("Variable with this name already declared in this scope: " + name);
+        }
+    }
+    locals_.push_back({name, scopeDepth_});
+}
+
+int Compiler::resolveLocal(const std::string& name) {
+    for (int i = (int)locals_.size() - 1; i >= 0; i--) {
+        if (locals_[i].name == name) {
+            return i;
+        }
+    }
+    return -1;
 }
