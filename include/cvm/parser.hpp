@@ -27,6 +27,8 @@ private:
     ExprPtr unary();
     ExprPtr primary();
 
+    void synchronize();
+
     bool match(const std::vector<TokenType>& types);
     bool check(TokenType type) const;
     Token advance();

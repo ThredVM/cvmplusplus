@@ -184,6 +184,27 @@ ExprPtr Parser::primary() {
     throw ParseError("Expect expression.", peek().line);
 }
 
+void Parser::synchronize() {
+    advance();
+
+    while (!isAtEnd()) {
+        if (previous().type == TokenType::NEWLINE) return;
+
+        switch (peek().type) {
+            case TokenType::LET:
+            case TokenType::PRINT:
+            case TokenType::INPUT:
+            case TokenType::IF:
+            case TokenType::WHILE:
+                return;
+            default:
+                break;
+        }
+
+        advance();
+    }
+}
+
 bool Parser::match(const std::vector<TokenType>& types) {
     for (TokenType type : types) {
         if (check(type)) {
