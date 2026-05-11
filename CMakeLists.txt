@@ -17,4 +17,5 @@ add_executable(cvm
     src/compiler.cpp
     src/vm.cpp
     src/debug.cpp
+    src/ast.cpp
 )

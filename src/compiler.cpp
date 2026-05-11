@@ -5,6 +5,7 @@ Compiler::Compiler() = default;
 
 Chunk Compiler::compile(const Program& program) {
     for (const auto& stmt : program.stmts) {
+        stmt->fold();
         compileStmt(*stmt);
     }
     chunk_.emitOp(OpCode::HALT, program.stmts.empty() ? 1 : program.stmts.back()->line);
