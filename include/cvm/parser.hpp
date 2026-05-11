@@ -10,6 +10,8 @@ public:
 
 private:
     StmtPtr statement();
+    StmtPtr fnStatement();
+    StmtPtr returnStatement();
     StmtPtr letStatement();
     StmtPtr printStatement();
     StmtPtr inputStatement();
@@ -25,6 +27,8 @@ private:
     ExprPtr term();
     ExprPtr factor();
     ExprPtr unary();
+    ExprPtr call();
+    ExprPtr finishCall(ExprPtr callee);
     ExprPtr primary();
 
     void synchronize();
