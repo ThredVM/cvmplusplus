@@ -1,10 +1,54 @@
+#include "cvm/lexer.hpp"
+#include "cvm/parser.hpp"
+#include "cvm/compiler.hpp"
+#include "cvm/vm.hpp"
+#include "cvm/error.hpp"
 #include <iostream>
+#include <fstream>
+#include <sstream>
+
+void run(const std::string& source, bool debug = false) {
+    try {
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+
+        Parser parser(std::move(tokens));
+        auto program = parser.parse();
+
+        Compiler compiler;
+        auto chunk = compiler.compile(program);
+
+        VM vm(debug);
+        vm.execute(chunk);
+    } catch (const CVMError& e) {
+        if (e.line != -1) {
+            std::cerr << "[Error] line " << e.line << ": " << e.what() << std::endl;
+        } else {
+            std::cerr << "[Error] " << e.what() << std::endl;
+        }
+        exit(1);
+    } catch (const std::exception& e) {
+        std::cerr << "[Fatal Error] " << e.what() << std::endl;
+        exit(1);
+    }
+}
+
+void runFile(const char* path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Could not open file: " << path << std::endl;
+        exit(1);
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    run(buffer.str());
+}
 
 int main(int argc, char* argv[]) {
-    if (argc > 1) {
-        std::cout << "Running script: " << argv[1] << std::endl;
+    if (argc == 2) {
+        runFile(argv[1]);
     } else {
-        std::cout << "Entering REPL (placeholder)" << std::endl;
+        std::cout << "Usage: cvm [path]" << std::endl;
     }
     return 0;
 }
