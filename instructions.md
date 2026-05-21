@@ -17,7 +17,7 @@ Follow these steps to perform a clean out-of-source build:
 
 1.  **Navigate to the project root:**
     ```bash
-    cd /home/rahul/projects/cvmplusplus
+    cd <project_root>
     ```
 
 2.  **Create and enter a build directory:**
